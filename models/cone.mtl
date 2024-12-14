@@ -1,0 +1,17 @@
+# Blender 4.3.0 MTL File: 'scene.blend'
+# www.blender.org
+
+newmtl myMaterial
+Kd 0.800007 0.357775 0.002899
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 0.383178
+illum 6
+Pr 0.272586
+Pm 0.968847
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000

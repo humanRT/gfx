@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/include/GLFW",
+                "/usr/include/vendor",
+                "/usr/include/vendor/imgui",
+                "/usr/include/vendor/imgui/backends",
+                "/usr/include/eigen3",
+                "/usr/include/fcl",
+                "/usr/include/x86_64-linux-gnu",
+                "${workspaceFolder}/3rdParty/stb"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
