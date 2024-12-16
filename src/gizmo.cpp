@@ -61,7 +61,7 @@ void main()
     vec3 specular = spec * lightColor;
 
     // Ambient lighting
-    vec3 ambient = 0.1 * lightColor; // Adjust the ambient intensity
+    vec3 ambient = 1 * vec3(1.0, 1.0, 1.0); // Adjust the ambient intensity
 
     // Calculate attenuation
     float distance = length(lightPos - FragPos);
@@ -372,11 +372,12 @@ void Gizmo::cbScroll(GLFWwindow* window, double xoffset, double yoffset)
 void Gizmo::run()
 {
     float lightAngle = 0.0f; // Initial angle for light rotation
-    const float lightRadius = 4.0f; // Distance from the origin
+    const float lightRadius = 5.0f; // Distance from the origin
     const float rotationSpeed = 0.025f; // Speed of rotation (radians per frame)
     glm::vec3 lightTarget = glm::vec3(0.0f, 1.0f, 0.0f); // Target for the light
 
     while (!glfwWindowShouldClose(pWindow)) {
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         pCamera->update();
@@ -399,12 +400,9 @@ void Gizmo::run()
         glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // Set to red
 
         // Set light properties
-        glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+        glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 0.9f);
         glUniform3fv(glGetUniformLocation(m_shaderProgram, "lightColor"), 1, glm::value_ptr(lightColor));
         glUniform3fv(glGetUniformLocation(m_shaderProgram, "lightPos"), 1, glm::value_ptr(lightPos)); // Fixed
-
-        glm::vec3 objectColor = glm::vec3(1.0f, 1.0f, 1.0f);
-        glUniform3fv(glGetUniformLocation(m_shaderProgram, "objectColor"), 1, glm::value_ptr(objectColor));
 
         // Set viewer position
         glm::vec3 viewPos = pCamera->getPosition();

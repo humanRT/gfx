@@ -85,16 +85,14 @@ bool Mesh::initScene(const aiScene* pScene, const std::string& filename)
     m_meshes.resize(pScene->mNumMeshes);
     m_materials.resize(pScene->mNumMaterials);
 
-    countVerticesAndIndices(pScene->mRootNode, pScene, numVertices, numIndices, identity);
-    reserveSpace(numVertices, numIndices);
-    processNode(pScene->mRootNode, pScene);
-    
-    extractTrianglesFromScene();
-
     if (!initMaterials(pScene, filename)) {
         return false;
     }
-
+    
+    countVerticesAndIndices(pScene->mRootNode, pScene, numVertices, numIndices, identity);
+    reserveSpace(numVertices, numIndices);
+    processNode(pScene->mRootNode, pScene);
+    extractTrianglesFromScene();
     populateBuffers();
 
     return GL_CHECK_ERROR();
@@ -427,38 +425,29 @@ void Mesh::populateBuffers()
 void Mesh::loadColors(const aiMaterial* pMaterial, int index)
 {
     aiColor4D AmbientColor(0.0f, 0.0f, 0.0f, 0.0f);
-    Vector4f AllOnes(1.0f);
+    aiColor3D DiffuseColor(0.0f, 0.0f, 0.0f);
+    aiColor3D SpecularColor(0.0f, 0.0f, 0.0f);
 
-    int ShadingModel = 0;
-    if (pMaterial->Get(AI_MATKEY_SHADING_MODEL, ShadingModel) == AI_SUCCESS) {
-        printf("Shading model %d\n", ShadingModel);
-    }
+    // int ShadingModel = 0;
+    // if (pMaterial->Get(AI_MATKEY_SHADING_MODEL, ShadingModel) == AI_SUCCESS) {
+    //     printf("Shading model %d\n", ShadingModel);
+    // }
 
     if (pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, AmbientColor) == AI_SUCCESS) {
         printf("Loaded ambient color [%f %f %f]\n", AmbientColor.r, AmbientColor.g, AmbientColor.b);
-        m_materials[index].AmbientColor.r = AmbientColor.r;
-        m_materials[index].AmbientColor.g = AmbientColor.g;
-        m_materials[index].AmbientColor.b = AmbientColor.b;
-    } else {
-        m_materials[index].AmbientColor = AllOnes;
-    }
-
-    aiColor3D DiffuseColor(0.0f, 0.0f, 0.0f);
+        m_materials[index].setAmbientColor(glm::vec3(AmbientColor.r, AmbientColor.g, AmbientColor.b));
+    } 
+    else 
+        m_materials[index].setAmbientColor(glm::vec3(1.0f, 1.0f, 1.0f));
 
     if (pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, DiffuseColor) == AI_SUCCESS) {
         printf("Loaded diffuse color [%f %f %f]\n", DiffuseColor.r, DiffuseColor.g, DiffuseColor.b);
-        m_materials[index].DiffuseColor.r = DiffuseColor.r;
-        m_materials[index].DiffuseColor.g = DiffuseColor.g;
-        m_materials[index].DiffuseColor.b = DiffuseColor.b;
+        m_materials[index].setDiffuseColor(glm::vec3(DiffuseColor.r, DiffuseColor.g, DiffuseColor.b));
     }
-
-    aiColor3D SpecularColor(0.0f, 0.0f, 0.0f);
 
     if (pMaterial->Get(AI_MATKEY_COLOR_SPECULAR, SpecularColor) == AI_SUCCESS) {
         printf("Loaded specular color [%f %f %f]\n", SpecularColor.r, SpecularColor.g, SpecularColor.b);
-        m_materials[index].SpecularColor.r = SpecularColor.r;
-        m_materials[index].SpecularColor.g = SpecularColor.g;
-        m_materials[index].SpecularColor.b = SpecularColor.b;
+        m_materials[index].setSpecularColor(glm::vec3(SpecularColor.r, SpecularColor.g, SpecularColor.b));
     }
 }
 
@@ -636,6 +625,10 @@ void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& 
         // Set the model matrix
         GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
+        Material material = m_materials[m_meshes[meshIndex].MaterialIndex];
+        glm::vec3 objectColor = material.getDiffuseColor();
+        glUniform3fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, glm::value_ptr(objectColor));
 
         // Draw the mesh
         glDrawElementsBaseVertex(GL_TRIANGLES,
