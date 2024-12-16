@@ -41,16 +41,27 @@ void Mesh::clear()
     }
 }
 
-void Mesh::countVerticesAndIndices(const aiScene* pScene, unsigned int& numVertices, unsigned int& numIndices)
+void Mesh::countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned int& numVertices, unsigned int& numIndices)
 {
-    for (unsigned int i = 0 ; i < m_meshes.size() ; i++) {
-        m_meshes[i].MaterialIndex = pScene->mMeshes[i]->mMaterialIndex;
-        m_meshes[i].NumIndices = pScene->mMeshes[i]->mNumFaces * 3;
-        m_meshes[i].BaseVertex = numVertices;
-        m_meshes[i].BaseIndex = numIndices;
+    // Iterate through the meshes in this node
+    for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+        unsigned int meshIndex = node->mMeshes[i];
+        const aiMesh* paiMesh = scene->mMeshes[meshIndex];
 
-        numVertices += pScene->mMeshes[i]->mNumVertices;
-        numIndices  += m_meshes[i].NumIndices;
+        // Set offsets and counts in m_meshes
+        m_meshes[meshIndex].MaterialIndex = paiMesh->mMaterialIndex;
+        m_meshes[meshIndex].NumIndices = paiMesh->mNumFaces * 3;
+        m_meshes[meshIndex].BaseVertex = numVertices;
+        m_meshes[meshIndex].BaseIndex = numIndices;
+
+        // Update the total counts
+        numVertices += paiMesh->mNumVertices;
+        numIndices += m_meshes[meshIndex].NumIndices;
+    }
+
+    // Recursively process child nodes
+    for (unsigned int i = 0; i < node->mNumChildren; i++) {
+        countVerticesAndIndices(node->mChildren[i], scene, numVertices, numIndices);
     }
 }
 
@@ -60,22 +71,54 @@ void Mesh::reserveSpace(unsigned int numVertices, unsigned int numIndices)
     m_indices.reserve(numIndices);
 }
 
+bool Mesh::initFromScene(const aiScene* pScene, const std::string& filename)
+{
+    m_meshes.resize(pScene->mNumMeshes);
+    m_materials.resize(pScene->mNumMaterials);
+
+    initAllMeshes(pScene);
+    extractTrianglesFromScene();
+
+    if (!initMaterials(pScene, filename)) {
+        return false;
+    }
+
+    populateBuffers();
+
+    return GL_CHECK_ERROR();
+}
+
 void Mesh::initAllMeshes(const aiScene* pScene)
 {
-    for (unsigned int i = 0 ; i < m_meshes.size() ; i++) {
-        const aiMesh* paiMesh = pScene->mMeshes[i];
-        initSingleMesh(i, paiMesh);
+    meshId = 0;
+    unsigned int numVertices = 0;
+    unsigned int numIndices = 0;
+
+    countVerticesAndIndices(pScene->mRootNode, pScene, numVertices, numIndices);
+    reserveSpace(numVertices, numIndices);
+    processNode(pScene->mRootNode, pScene, 0);
+}
+
+void Mesh::processNode(aiNode* node, const aiScene* scene, int level)
+{
+    printf("%s%s [%d]\n", std::string(2 * level++, ' ').c_str(), node->mName.C_Str(), node->mNumMeshes);
+    for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+        const aiMesh* paiMesh = scene->mMeshes[node->mMeshes[i]];
+        initSingleMesh(meshId, paiMesh);
+        meshId++;
+    }
+
+    for (unsigned int i = 0; i < node->mNumChildren; i++) {
+        processNode(node->mChildren[i], scene, level);
     }
 }
 
 void Mesh::initSingleMesh(uint MeshIndex, const aiMesh* paiMesh)
 {
-    const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
-    printf("Mesh %d\n", MeshIndex);
-
-    // Populate the vertex attribute vectors
     Vertex v;
-
+    const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
+    
+    // Populate the vertex attribute vectors
     for (unsigned int i = 0; i < paiMesh->mNumVertices; i++) {
         const aiVector3D& pPos = paiMesh->mVertices[i];
         // printf("%d: ", i); Vector3f t(pPos.x, pPos.y, pPos.z); t.Print();
@@ -104,28 +147,6 @@ void Mesh::initSingleMesh(uint MeshIndex, const aiMesh* paiMesh)
         m_indices.push_back(Face.mIndices[1]);
         m_indices.push_back(Face.mIndices[2]);
     }
-}
-
-bool Mesh::initFromScene(const aiScene* pScene, const std::string& filename)
-{
-    m_meshes.resize(pScene->mNumMeshes);
-    m_materials.resize(pScene->mNumMaterials);
-
-    unsigned int numVertices = 0;
-    unsigned int numIndices = 0;
-
-    countVerticesAndIndices(pScene, numVertices, numIndices);
-    reserveSpace(numVertices, numIndices);
-    initAllMeshes(pScene);
-    extractTrianglesFromScene();
-
-    if (!initMaterials(pScene, filename)) {
-        return false;
-    }
-
-    populateBuffers();
-
-    return GL_CHECK_ERROR();
 }
 
 bool Mesh::initMaterials(const aiScene* pScene, const std::string& filename)

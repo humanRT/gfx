@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    int runForSeconds = 25;
+    int runForSeconds = 60;
 
     if (argc > 1)
     {
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     utils::format::printBegin();
     if (runForSeconds > 0) utils::timer::shutdown(runForSeconds);
     
-    const std::string filePath = utils::disk::getCurrentDirectory() + "/models/cone.glb";
+    const std::string filePath = utils::disk::getCurrentDirectory() + "/models/CRX10_axis1.glb";
 
     Gizmo gizmo;
     if (gizmo.init() != 0)

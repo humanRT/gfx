@@ -42,6 +42,7 @@ public:
     void drawNormals(float normalLength);
     void drawTriangles(GLuint wireframeProgram, const glm::mat4& mvp);
     bool loadMesh(const std::string& filename);
+    void processNode(aiNode* node, const aiScene* scene, int level);
     void render();
 
 protected:
@@ -72,6 +73,7 @@ protected:
         uint MaterialIndex;
     };
 
+    unsigned int meshId = 0;
     Camera *m_camera;
     const aiScene* m_pScene;
     Assimp::Importer m_importer;
@@ -102,7 +104,7 @@ private:
     void initAllMeshes(const aiScene* pScene);
     bool initFromScene(const aiScene* pScene, const std::string& filename);
     bool initMaterials(const aiScene* pScene, const std::string& filename);
-    void countVerticesAndIndices(const aiScene* pScene, uint& numVertices, uint& numIndices);
+    void countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned int& numVertices, unsigned int& numIndices);
     void loadColors(const aiMaterial* pMaterial, int index);
     void loadTextures(const std::string& Dir, const aiMaterial* pMaterial, int index);
 

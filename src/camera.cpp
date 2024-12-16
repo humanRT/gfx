@@ -40,7 +40,7 @@ void Camera::setWindow(GLFWwindow* window)
 
 void Camera::resetView()
 {
-    m_distance = 5.0f;  // Default distance from target
+    m_distance = 1.0f;  // Default distance from target
     m_yaw = -90.0f;     // Default horizontal angle
     m_pitch = 0.0f;     // Default vertical angle
     m_target = glm::vec3(0.0f, 0.0f, 0.0f); // Default target
@@ -104,10 +104,9 @@ void Camera::update()
 
 void Camera::processMouseScroll(float yOffset)
 {
-    const float zoomSpeed = 0.5f;
+    const float zoomSpeed = 0.2f;
     m_distance -= yOffset * zoomSpeed;
-    m_distance = glm::clamp(m_distance, 1.0f, 100.0f); // Prevent zooming too close or too far
-    std::cout << "Distance: " << m_distance << std::endl;
+    m_distance = glm::clamp(m_distance, 0.1f, 100.0f); // Prevent zooming too close or too far
     updateCameraVectors();
 }
 
@@ -131,7 +130,7 @@ void Camera::processMouseMovement(float xOffset, float yOffset, bool constrainPi
 
 void Camera::processMousePan(float xOffset, float yOffset)
 {
-    const float panSpeed = 0.01f;
+    const float panSpeed = 0.002f;
     glm::vec3 right = glm::normalize(glm::cross(m_target - m_position, m_up));
     glm::vec3 up = -glm::normalize(glm::cross(right, m_target - m_position));
 

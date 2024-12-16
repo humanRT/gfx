@@ -242,7 +242,7 @@ void Gizmo::drawLightLine(const glm::vec3& lightPos, const glm::vec3& lightTarge
     glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
     GLuint colorLoc = glGetUniformLocation(shaderProgram, "lineColor");
-    glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // Yellow line
+    glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f); // Yellow line
 
     // Draw the line
     glDrawArrays(GL_LINES, 0, 2);
@@ -290,14 +290,14 @@ int Gizmo::init()
     m_wireframeProgram = createWireframeShaderProgram();
     m_lightProgram = createSimpleShaderProgram();
 
-    pCamera = new Camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    pCamera = new Camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     pCamera->setWindow(pWindow);
 
-    // glFrontFace(GL_CW);
     glEnable(GL_MULTISAMPLE);
     glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_NORMALIZE);
+    glLineWidth(2.0f);
     
     return 0;
 }
@@ -372,8 +372,8 @@ void Gizmo::run()
 {
     float lightAngle = 0.0f; // Initial angle for light rotation
     const float lightRadius = 2.0f; // Distance from the origin
-    const float rotationSpeed = 0.005f; // Speed of rotation (radians per frame)
-    glm::vec3 lightTarget = glm::vec3(0.0f, 0.0f, 0.0f); // Target for the light
+    const float rotationSpeed = 0.025f; // Speed of rotation (radians per frame)
+    glm::vec3 lightTarget = glm::vec3(0.0f, 2.0f, 0.0f); // Target for the light
 
     while (!glfwWindowShouldClose(pWindow)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -403,7 +403,7 @@ void Gizmo::run()
         // Calculate light position
         float lightX = lightRadius * cos(lightAngle);
         float lightY = lightRadius * sin(lightAngle);
-        glm::vec3 lightPos = glm::vec3(lightX, lightY, 0.0f); // Z-axis rotation
+        glm::vec3 lightPos = glm::vec3(lightX, 2.0f, lightY); // Z-axis rotation
 
         // Update light angle
         lightAngle += rotationSpeed;
