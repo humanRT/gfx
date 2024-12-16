@@ -9,15 +9,16 @@ layout (location = 2) in vec3 aNormal;
 out vec3 FragPos;
 out vec3 Normal;
 
-uniform mat4 mvp;
 uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
 void main()
 {
     FragPos = vec3(model * vec4(aPos, 1.0));
     Normal = mat3(transpose(inverse(model))) * aNormal;
 
-    gl_Position = mvp * vec4(aPos, 1.0);
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
 }
 )";
 
@@ -371,45 +372,31 @@ void Gizmo::cbScroll(GLFWwindow* window, double xoffset, double yoffset)
 void Gizmo::run()
 {
     float lightAngle = 0.0f; // Initial angle for light rotation
-    const float lightRadius = 2.0f; // Distance from the origin
+    const float lightRadius = 4.0f; // Distance from the origin
     const float rotationSpeed = 0.025f; // Speed of rotation (radians per frame)
-    glm::vec3 lightTarget = glm::vec3(0.0f, 2.0f, 0.0f); // Target for the light
+    glm::vec3 lightTarget = glm::vec3(0.0f, 1.0f, 0.0f); // Target for the light
 
     while (!glfwWindowShouldClose(pWindow)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         pCamera->update();
-        model = glm::mat4(1.0f);
         view = pCamera->getViewMatrix();
         projection = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f);
-        
-        float scale = 1.0f;
-        model = glm::scale(glm::mat4(1.0f), glm::vec3(scale, scale, scale));
-        mvp = projection * view * model;
-
-        glUseProgram(m_shaderProgram);
-
-        // Set MVP matrix
-        GLuint mvpLocation = glGetUniformLocation(m_shaderProgram, "mvp");
-        glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, glm::value_ptr(mvp));
-
-        // Set model matrix
-        GLuint modelLoc = glGetUniformLocation(m_shaderProgram, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-        GLuint colorLoc = glGetUniformLocation(m_shaderProgram, "wireframeColor");
-        glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // Set to red
 
         // Calculate light position
         float lightX = lightRadius * cos(lightAngle);
         float lightY = lightRadius * sin(lightAngle);
-        glm::vec3 lightPos = glm::vec3(lightX, 2.0f, lightY); // Z-axis rotation
+        glm::vec3 lightPos = glm::vec3(lightX, 1.0f, lightY); // Z-axis rotation
 
         // Update light angle
         lightAngle += rotationSpeed;
         if (lightAngle > 2.0f * glm::pi<float>()) {
             lightAngle -= 2.0f * glm::pi<float>();
         }
+
+        glUseProgram(m_shaderProgram);
+        GLuint colorLoc = glGetUniformLocation(m_shaderProgram, "wireframeColor");
+        glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // Set to red
 
         // Set light properties
         glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -429,9 +416,9 @@ void Gizmo::run()
         glUniform1f(glGetUniformLocation(m_shaderProgram, "quadratic"), 0.032f);
 
         // Render the mesh
-        pMesh->render();
+        pMesh->render(m_shaderProgram, view, projection);
         // pMesh->drawTriangles(m_wireframeProgram, mvp);
-        drawLightLine(lightPos, lightTarget, mvp, m_lightProgram);
+        // drawLightLine(lightPos, lightTarget, mvp, m_lightProgram);
 
         glfwSwapBuffers(pWindow);
         glfwPollEvents();

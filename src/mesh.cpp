@@ -41,18 +41,23 @@ void Mesh::clear()
     }
 }
 
-void Mesh::countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned int& numVertices, unsigned int& numIndices)
+void Mesh::countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned int& numVertices, unsigned int& numIndices, const aiMatrix4x4& parentTransform)
 {
+    aiMatrix4x4 globalTransform = parentTransform * node->mTransformation;
+
     // Iterate through the meshes in this node
-    for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+    for (unsigned int i = 0; i < node->mNumMeshes; i++)
+    {
         unsigned int meshIndex = node->mMeshes[i];
         const aiMesh* paiMesh = scene->mMeshes[meshIndex];
 
         // Set offsets and counts in m_meshes
+        m_meshes[meshIndex].Name = paiMesh->mName.C_Str();
         m_meshes[meshIndex].MaterialIndex = paiMesh->mMaterialIndex;
         m_meshes[meshIndex].NumIndices = paiMesh->mNumFaces * 3;
         m_meshes[meshIndex].BaseVertex = numVertices;
         m_meshes[meshIndex].BaseIndex = numIndices;
+        m_meshes[meshIndex].Transform = globalTransform;
 
         // Update the total counts
         numVertices += paiMesh->mNumVertices;
@@ -61,7 +66,7 @@ void Mesh::countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned 
 
     // Recursively process child nodes
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
-        countVerticesAndIndices(node->mChildren[i], scene, numVertices, numIndices);
+        countVerticesAndIndices(node->mChildren[i], scene, numVertices, numIndices, globalTransform);
     }
 }
 
@@ -71,12 +76,19 @@ void Mesh::reserveSpace(unsigned int numVertices, unsigned int numIndices)
     m_indices.reserve(numIndices);
 }
 
-bool Mesh::initFromScene(const aiScene* pScene, const std::string& filename)
+bool Mesh::initScene(const aiScene* pScene, const std::string& filename)
 {
+    unsigned int numVertices = 0;
+    unsigned int numIndices = 0;
+
+    aiMatrix4x4 identity; // Identity matrix
     m_meshes.resize(pScene->mNumMeshes);
     m_materials.resize(pScene->mNumMaterials);
 
-    initAllMeshes(pScene);
+    countVerticesAndIndices(pScene->mRootNode, pScene, numVertices, numIndices, identity);
+    reserveSpace(numVertices, numIndices);
+    processNode(pScene->mRootNode, pScene);
+    
     extractTrianglesFromScene();
 
     if (!initMaterials(pScene, filename)) {
@@ -88,24 +100,13 @@ bool Mesh::initFromScene(const aiScene* pScene, const std::string& filename)
     return GL_CHECK_ERROR();
 }
 
-void Mesh::initAllMeshes(const aiScene* pScene)
-{
-    meshId = 0;
-    unsigned int numVertices = 0;
-    unsigned int numIndices = 0;
-
-    countVerticesAndIndices(pScene->mRootNode, pScene, numVertices, numIndices);
-    reserveSpace(numVertices, numIndices);
-    processNode(pScene->mRootNode, pScene, 0);
-}
-
 void Mesh::processNode(aiNode* node, const aiScene* scene, int level)
 {
-    printf("%s%s [%d]\n", std::string(2 * level++, ' ').c_str(), node->mName.C_Str(), node->mNumMeshes);
+    MeshData meshData = MeshData::findByName(m_meshes, node->mName.C_Str());
+    printf("%s%s %s\n", std::string(2 * level++, ' ').c_str(), meshData.Name.c_str(), meshData.printPosition().c_str());
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         const aiMesh* paiMesh = scene->mMeshes[node->mMeshes[i]];
-        initSingleMesh(meshId, paiMesh);
-        meshId++;
+        initSingleMesh(paiMesh);
     }
 
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
@@ -113,7 +114,7 @@ void Mesh::processNode(aiNode* node, const aiScene* scene, int level)
     }
 }
 
-void Mesh::initSingleMesh(uint MeshIndex, const aiMesh* paiMesh)
+void Mesh::initSingleMesh(const aiMesh* paiMesh)
 {
     Vertex v;
     const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
@@ -121,7 +122,6 @@ void Mesh::initSingleMesh(uint MeshIndex, const aiMesh* paiMesh)
     // Populate the vertex attribute vectors
     for (unsigned int i = 0; i < paiMesh->mNumVertices; i++) {
         const aiVector3D& pPos = paiMesh->mVertices[i];
-        // printf("%d: ", i); Vector3f t(pPos.x, pPos.y, pPos.z); t.Print();
         v.position = Vector3f(pPos.x, pPos.y, pPos.z);
 
         if (paiMesh->mNormals) {
@@ -476,7 +476,7 @@ bool Mesh::loadMesh(const std::string& filename)
     if (m_pScene) {
         m_globalInverseTransform = m_pScene->mRootNode->mTransformation;
         m_globalInverseTransform = m_globalInverseTransform.Inverse();
-        result = initFromScene(m_pScene, filename);
+        result = initScene(m_pScene, filename);
     }
     else {
         printf("Error parsing '%s': '%s'\n", filename.c_str(), m_importer.GetErrorString());
@@ -616,19 +616,35 @@ void Mesh::extractTrianglesFromScene() {
     std::cout << "Num triangles: " << m_triangles.size() << std::endl;
 }
 
-void Mesh::render()
+void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection)
 {
+    glUseProgram(shaderProgram);
+
+    // Set the view and projection matrices
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
     glBindVertexArray(m_VAO);
 
-    for (unsigned int meshIndex = 0 ; meshIndex < m_meshes.size() ; meshIndex++)
-    {
-        glDrawElementsBaseVertex(GL_TRIANGLES,
-            m_meshes[meshIndex].NumIndices,
-            GL_UNSIGNED_INT,
-            (void*)(sizeof(unsigned int) * m_meshes[meshIndex].BaseIndex),
-            m_meshes[meshIndex].BaseVertex);
+    for (unsigned int meshIndex = 0; meshIndex < m_meshes.size(); meshIndex++) {
+        // Convert Assimp's aiMatrix4x4 to glm::mat4
+        aiMatrix4x4 aiTransform = m_meshes[meshIndex].Transform;
+        glm::mat4 transform = glm::transpose(glm::make_mat4(&aiTransform.a1));
 
+        // Set the model matrix
+        GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
+        // Draw the mesh
+        glDrawElementsBaseVertex(GL_TRIANGLES,
+                                 m_meshes[meshIndex].NumIndices,
+                                 GL_UNSIGNED_INT,
+                                 (void*)(sizeof(unsigned int) * m_meshes[meshIndex].BaseIndex),
+                                 m_meshes[meshIndex].BaseVertex);
     }
 
     glBindVertexArray(0);
+    glUseProgram(0);
 }

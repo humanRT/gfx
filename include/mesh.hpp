@@ -1,7 +1,9 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
+#include <algorithm>
 #include <iostream>
+
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp> // For transformations like perspective, lookAt, etc.
@@ -13,6 +15,7 @@
 #include "camera.hpp"
 #include "math3d.hpp"
 #include "material.hpp"
+#include "meshData.hpp"
 #include "utils.hpp"
 
 #define ARRAY_SIZE_IN_ELEMENTS(a) (sizeof(a)/sizeof(a[0]))
@@ -29,8 +32,6 @@
                            aiProcess_CalcTangentSpace)
 
 #define GL_CHECK_ERROR() (glGetError() == GL_NO_ERROR)
-#define INVALID_MATERIAL 0xFFFFFFFF
-
 
 class Mesh
 {
@@ -42,8 +43,8 @@ public:
     void drawNormals(float normalLength);
     void drawTriangles(GLuint wireframeProgram, const glm::mat4& mvp);
     bool loadMesh(const std::string& filename);
-    void processNode(aiNode* node, const aiScene* scene, int level);
-    void render();
+    void processNode(aiNode* node, const aiScene* scene, int level = 0);
+    void render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection);
 
 protected:
     enum BUFFER_TYPE {
@@ -54,30 +55,20 @@ protected:
         NUM_BUFFERS = 4
     };
 
+    struct Vertex {
+        Vector3f position;
+        Vector2f texCoords;
+        Vector3f normal;
+    };
+
     struct Triangle {
         glm::vec3 v0, v1, v2;
     };
 
-    struct MeshEntry {
-        MeshEntry()
-        {
-            NumIndices = 0;
-            BaseVertex = 0;
-            BaseIndex = 0;
-            MaterialIndex = INVALID_MATERIAL;
-        }
-
-        uint NumIndices;
-        uint BaseVertex;
-        uint BaseIndex;
-        uint MaterialIndex;
-    };
-
-    unsigned int meshId = 0;
     Camera *m_camera;
     const aiScene* m_pScene;
     Assimp::Importer m_importer;
-    std::vector<MeshEntry> m_meshes;
+    std::vector<MeshData> m_meshes;
     Matrix4f m_globalInverseTransform;
 
     GLuint m_VAO = 0;
@@ -86,25 +77,19 @@ protected:
     void clear();
     void extractTrianglesFromScene();
     virtual void reserveSpace(uint NumVertices, uint NumIndices);
-    virtual void initSingleMesh(uint MeshIndex, const aiMesh* paiMesh);
+    virtual void initSingleMesh(const aiMesh* paiMesh);
     virtual void populateBuffers();
 
 private:
-    struct Vertex {
-        Vector3f position;
-        Vector2f texCoords;
-        Vector3f normal;
-    };
-
     std::vector<uint> m_indices;
     std::vector<Vertex> m_vertices;
     std::vector<Material> m_materials;
     std::vector<Triangle> m_triangles;
 
-    void initAllMeshes(const aiScene* pScene);
-    bool initFromScene(const aiScene* pScene, const std::string& filename);
+    bool initScene(const aiScene* pScene, const std::string& filename);
     bool initMaterials(const aiScene* pScene, const std::string& filename);
-    void countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned int& numVertices, unsigned int& numIndices);
+    void countVerticesAndIndices(aiNode* node, const aiScene* scene, unsigned int& numVertices, unsigned int& numIndices, const aiMatrix4x4& parentTransform);
+    
     void loadColors(const aiMaterial* pMaterial, int index);
     void loadTextures(const std::string& Dir, const aiMaterial* pMaterial, int index);
 
