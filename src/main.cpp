@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    int runForSeconds = 60;
+    int runForSeconds = 10;
 
     if (argc > 1)
     {
@@ -21,12 +21,10 @@ int main(int argc, char *argv[])
 
     // utils::format::clearConsole();
     utils::format::printBegin();
-    if (runForSeconds > 0) utils::timer::shutdown(runForSeconds);
-    
     const std::string filePath = utils::disk::getCurrentDirectory() + "/models/CRX10_axis1.glb";
 
-    Gizmo gizmo;
-    if (gizmo.init() != 0)
+    std::shared_ptr<Gizmo> gizmo = std::make_shared<Gizmo>();
+    if (gizmo->init() != 0)
     {
         std::cerr << "Failed to initialize Gizmo" << std::endl;
         return -1;
@@ -35,7 +33,7 @@ int main(int argc, char *argv[])
     // gizmo.loadModel(filePath);
     // gizmo.loadMesh(filePath);
     utils::printGLVersion();
-    if (gizmo.loadModel(filePath)) gizmo.run();
+    if (gizmo->loadModel(filePath)) gizmo->run(runForSeconds);
     
     utils::format::printEnd();
 

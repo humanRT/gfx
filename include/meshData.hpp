@@ -14,6 +14,7 @@ public:
     {
         Name = "";
         Parent = nullptr;
+        Children = std::vector<MeshData*>();
         NumIndices = 0;
         BaseVertex = 0;
         BaseIndex = 0;
@@ -23,6 +24,7 @@ public:
 
     std::string Name;
     MeshData* Parent;
+    std::vector<MeshData*> Children;
     uint NumIndices;
     uint BaseVertex;
     uint BaseIndex;
@@ -34,6 +36,22 @@ public:
         std::ostringstream oss;
         oss << "(" << Transform.a4 << ", " << Transform.b4 << ", " << Transform.c4 << ")";
         return oss.str();
+    }
+    
+    int getLevel() const
+    {
+        int level = 0;
+        const MeshData* current = this;
+        while (current->Parent != nullptr) {
+            level++;
+            current = current->Parent;
+        }
+        return level;
+    }
+
+    glm::mat4 getTransform() const
+    {
+        return glm::transpose(glm::make_mat4(&Transform.a1));
     }
 
     static MeshData* findByName(std::vector<MeshData>& meshes, const std::string& targetName)

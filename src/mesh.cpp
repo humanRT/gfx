@@ -102,7 +102,11 @@ void Mesh::processNode(aiNode* node, const aiScene* scene, int level)
 {
     MeshData* meshData = MeshData::findByName(m_meshes, node->mName);
     MeshData* parentData = MeshData::findByName(m_meshes, node->mParent->mName);
-    meshData->Parent = parentData;
+
+    if (parentData) {
+        parentData->Children.push_back(meshData);
+        meshData->Parent = parentData;
+    }
 
     printf("%s%s %s\n", std::string(2 * level++, ' ').c_str(), meshData->Name.c_str(), meshData->printPosition().c_str());
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
@@ -611,16 +615,46 @@ void Mesh::extractTrianglesFromScene() {
 }
 
 float angle = 0;
-float factor = 0;
+
+// glm::mat4 Mesh::computeTransform(const MeshData& mesh)
+// {
+//     glm::mat4 glmTransform = glm::transpose(glm::make_mat4(&mesh.Transform.a1));
+
+//     if (mesh.Name.find("A1") != std::string::npos) {
+//         glm::vec3 rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f); // Example: Y-axis
+//         float angleInRadians = glm::radians(angle);
+//         glmTransform = glm::rotate(glmTransform, angleInRadians, rotationAxis);
+//     }
+    
+//     return glmTransform;
+// }
 
 glm::mat4 Mesh::computeTransform(const MeshData& mesh)
 {
-    // Ensure the data layout is compatible
-    glm::mat4 glmTransform = glm::transpose(glm::make_mat4(&mesh.Transform.a1));
-    return glmTransform;
+    // Base case: no parent, return identity matrix
+    if (mesh.Parent == nullptr) {
+        return glm::transpose(glm::make_mat4(&mesh.Transform.a1));
+    }
+
+    // Identity matrix
+    glm::mat4 parentTransform = glm::mat4(1.0f);
+    if (mesh.Parent != nullptr)
+    {
+        // parentTransform = glm::inverse(mesh.Parent->getTransform());
+        parentTransform = mesh.Parent->getTransform();
+    }
+
+    glm::mat4 localTransform = mesh.getTransform();
+    if (mesh.Name.find("A1") != std::string::npos) {
+        glm::vec3 rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f); // Example: Y-axis
+        float angleInRadians = glm::radians(angle);
+        localTransform = glm::rotate(localTransform, angleInRadians, rotationAxis);
+    }
+        
+    return parentTransform * localTransform;
 }
 
-void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection)
+void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection, bool toggle)
 {
     glUseProgram(shaderProgram);
 
@@ -650,7 +684,7 @@ void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& 
         glm::vec3 objectColor = material.getDiffuseColor();
 
         if (mesh.Name.find("Lamp") != std::string::npos) {
-            if (factor > 0.5)
+            if (toggle) 
                 objectColor = glm::vec3(1.0f, 0.10f, 0.10f);
         }
 
@@ -668,13 +702,4 @@ void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& 
     glUseProgram(0);
 
     angle += 0.5f; // Increment angle for animation
-    factor += 0.005f; // Increment factor for animation
-    if (factor > 1.0)
-        factor = 0.0f;
 }
-
-// if (mesh.Name.find("A1") != std::string::npos) {
-//     glm::vec3 rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f); // Example: Y-axis
-//     float angleInRadians = glm::radians(angle);
-//     localTransform = glm::rotate(localTransform, angleInRadians, rotationAxis);
-// }

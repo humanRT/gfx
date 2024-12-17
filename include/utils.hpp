@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -41,7 +42,8 @@ namespace utils
 
     namespace timer
     {
-        void shutdown(int);
+        // void shutdown(int);
+        void shutdown(int seconds,  std::function<bool()> callback);
     }
 }
 

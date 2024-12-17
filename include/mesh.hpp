@@ -46,7 +46,7 @@ public:
     void drawTriangles(GLuint wireframeProgram, const glm::mat4& mvp);
     bool loadMesh(const std::string& filename);
     void processNode(aiNode* node, const aiScene* scene, int level = 0);
-    void render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection);
+    void render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection, bool toggle);
 
 protected:
     enum BUFFER_TYPE {

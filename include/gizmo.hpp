@@ -2,8 +2,10 @@
 #define GIZMO_HPP
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -33,7 +35,7 @@
 #define WINDOW_WIDTH  1920
 #define WINDOW_HEIGHT 1920
 
-class Gizmo {
+class Gizmo : public std::enable_shared_from_this<Gizmo> {
 public:
     Gizmo();
     ~Gizmo();
@@ -41,7 +43,7 @@ public:
     int init();
     bool loadModel(const std::string& filePath);
     void setCallbacks(GLFWwindow* window);
-    void run();
+    void run(int runForSeconds);
 
     void cbError();
     void cbFramebufferSize(GLFWwindow* window, int width, int height);
@@ -50,7 +52,9 @@ public:
     void cbRenderCB();
     void cbScroll(GLFWwindow* window, double xoffset, double yoffset);
     void cbSpecialKeyboard(int key, int mouse_x, int mouse_y);
-
+    void cbTimer(int interval);
+    bool cbShutdownTimer();
+    
 private:
     GLuint compileShader(GLenum type, const char* source);
     GLuint createShaderProgram();
@@ -65,6 +69,8 @@ private:
     static const char* lineShaderSource;
     static const char* lineFragmentShader;
 
+    bool tick = false;
+    bool toggle = false;
     glm::mat4 mvp, model, view, projection;
     GLuint m_shaderProgram;
     GLuint m_wireframeProgram;
@@ -74,7 +80,6 @@ private:
     Mesh *pMesh = NULL;
     Camera *pCamera = NULL;
     PersProjInfo persProjInfo;
-
 };
 
 #endif // GIZMO_HPP

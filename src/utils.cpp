@@ -14,13 +14,17 @@ namespace fmt {
     };
 }
 
-void shutdownTimer(int seconds)
+void shutdownTimer(int seconds, std::function<bool()> callback)
 {
-    while (seconds > 0) {
-        std::string title = fmt::format("Shutting down in {} seconds ...", seconds);
-        std::cout << "\033[33m" << title << "\033[0m" << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        seconds--;
+    bool repeat = true;
+    while (repeat) {
+        while (seconds > 0) {
+            std::string title = fmt::format("Shutting down in {} seconds ...", seconds);
+            std::cout << "\033[33m" << title << "\033[0m" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            seconds--;
+        }
+        repeat = callback();
     }
     
     exit(0);
@@ -134,9 +138,10 @@ void utils::format::printEnd()
     std::cout << std::string(40, '-') << std::endl;
     std::cout << std::endl << ".END" << std::endl;
 }
-
-void utils::timer::shutdown(int seconds)
+void utils::timer::shutdown(int seconds, std::function<bool()> callback)
 {
-    std::thread shutdownThread(shutdownTimer, seconds);
-    shutdownThread.detach();    
+    std::thread shutdownThread([seconds, callback]() {
+        shutdownTimer(seconds, callback);
+    });
+    shutdownThread.detach();
 }

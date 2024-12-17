@@ -108,16 +108,9 @@ void main() {
 
 Gizmo::Gizmo()
 {
-    glClearColor(0.2f, 0.0f, 0.0f, 0.0f);
-
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
-    float FOV = 45.0f;
-    float zNear = 1.0f;
-    float zFar = 100.0f;
-
-    persProjInfo = { FOV, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT, zNear, zFar };
+    int interval = 10;
+    std::thread t(&Gizmo::cbTimer, this, interval);
+    t.detach();
 }
 
 Gizmo::~Gizmo()
@@ -355,8 +348,14 @@ void Gizmo::cbFramebufferSize(GLFWwindow* /*window*/, int width, int height)
 
 void Gizmo::cbKeyboard(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    if (action == GLFW_PRESS)
+    {
+        if (key == GLFW_KEY_ESCAPE) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+        else if (key == GLFW_KEY_SPACE) {
+            
+        }        
     }
 }
 
@@ -369,12 +368,37 @@ void Gizmo::cbScroll(GLFWwindow* window, double xoffset, double yoffset)
     pCamera->scrollCallback(window, xoffset, yoffset);
 }
 
-void Gizmo::run()
+void Gizmo::cbTimer(int interval)
+{
+    int count = 0;
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+        count++;
+        if (count % 5 == 0) { tick = true; }
+        if (count % 25 == 0) { toggle = !toggle; }
+        if (count % 100 == 0) { count = 0; }
+    }
+}
+
+bool Gizmo::cbShutdownTimer()
+{
+    std::cout << "Shutdown triggered. Cleaning up resources...\n";
+    return false; 
+}
+
+void Gizmo::run(int runForSeconds)
 {
     float lightAngle = 0.0f; // Initial angle for light rotation
     const float lightRadius = 5.0f; // Distance from the origin
-    const float rotationSpeed = 0.025f; // Speed of rotation (radians per frame)
+    const float rotationSpeed = 0.075f; // Speed of rotation (radians per frame)
     glm::vec3 lightTarget = glm::vec3(0.0f, 1.0f, 0.0f); // Target for the light
+
+    if (runForSeconds > 0) {
+        auto self = shared_from_this(); // Capture shared pointer to this instance
+        utils::timer::shutdown(runForSeconds, [self]() -> bool {
+            return self->cbShutdownTimer();
+        });
+    }
 
     while (!glfwWindowShouldClose(pWindow)) {
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -390,7 +414,12 @@ void Gizmo::run()
         glm::vec3 lightPos = glm::vec3(lightX, 1.0f, lightY); // Z-axis rotation
 
         // Update light angle
-        lightAngle += rotationSpeed;
+        if (tick)
+        {
+            lightAngle += rotationSpeed;
+            tick = false;
+        }
+
         if (lightAngle > 2.0f * glm::pi<float>()) {
             lightAngle -= 2.0f * glm::pi<float>();
         }
@@ -414,7 +443,7 @@ void Gizmo::run()
         glUniform1f(glGetUniformLocation(m_shaderProgram, "quadratic"), 0.032f);
 
         // Render the mesh
-        pMesh->render(m_shaderProgram, view, projection);
+        pMesh->render(m_shaderProgram, view, projection, toggle);
         // pMesh->drawTriangles(m_wireframeProgram, mvp);
         // drawLightLine(lightPos, lightTarget, mvp, m_lightProgram);
 
