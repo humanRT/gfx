@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <string>
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -40,6 +41,7 @@ public:
     Mesh();
     ~Mesh();
     
+    glm::mat4 computeTransform(const MeshData& mesh);
     void drawNormals(float normalLength);
     void drawTriangles(GLuint wireframeProgram, const glm::mat4& mvp);
     bool loadMesh(const std::string& filename);

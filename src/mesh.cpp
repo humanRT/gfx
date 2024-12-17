@@ -100,8 +100,11 @@ bool Mesh::initScene(const aiScene* pScene, const std::string& filename)
 
 void Mesh::processNode(aiNode* node, const aiScene* scene, int level)
 {
-    MeshData meshData = MeshData::findByName(m_meshes, node->mName.C_Str());
-    printf("%s%s %s\n", std::string(2 * level++, ' ').c_str(), meshData.Name.c_str(), meshData.printPosition().c_str());
+    MeshData* meshData = MeshData::findByName(m_meshes, node->mName);
+    MeshData* parentData = MeshData::findByName(m_meshes, node->mParent->mName);
+    meshData->Parent = parentData;
+
+    printf("%s%s %s\n", std::string(2 * level++, ' ').c_str(), meshData->Name.c_str(), meshData->printPosition().c_str());
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         const aiMesh* paiMesh = scene->mMeshes[node->mMeshes[i]];
         initSingleMesh(paiMesh);
@@ -163,6 +166,7 @@ bool Mesh::initMaterials(const aiScene* pScene, const std::string& filename)
         loadColors(pMaterial, i);
     }
 
+    std::cout << std::string(40, '-') << std::endl;
     return Ret;
 }
 
@@ -433,20 +437,21 @@ void Mesh::loadColors(const aiMaterial* pMaterial, int index)
     //     printf("Shading model %d\n", ShadingModel);
     // }
 
+    printf("[%s]\n", pMaterial->GetName().C_Str());
     if (pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, AmbientColor) == AI_SUCCESS) {
-        printf("Loaded ambient color [%f %f %f]\n", AmbientColor.r, AmbientColor.g, AmbientColor.b);
+        printf("Ambient [%f %f %f]\n", AmbientColor.r, AmbientColor.g, AmbientColor.b);
         m_materials[index].setAmbientColor(glm::vec3(AmbientColor.r, AmbientColor.g, AmbientColor.b));
     } 
     else 
         m_materials[index].setAmbientColor(glm::vec3(1.0f, 1.0f, 1.0f));
 
     if (pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, DiffuseColor) == AI_SUCCESS) {
-        printf("Loaded diffuse color [%f %f %f]\n", DiffuseColor.r, DiffuseColor.g, DiffuseColor.b);
+        printf("Diffuse [%f %f %f]\n", DiffuseColor.r, DiffuseColor.g, DiffuseColor.b);
         m_materials[index].setDiffuseColor(glm::vec3(DiffuseColor.r, DiffuseColor.g, DiffuseColor.b));
     }
 
     if (pMaterial->Get(AI_MATKEY_COLOR_SPECULAR, SpecularColor) == AI_SUCCESS) {
-        printf("Loaded specular color [%f %f %f]\n", SpecularColor.r, SpecularColor.g, SpecularColor.b);
+        printf("Specular [%f %f %f]\n", SpecularColor.r, SpecularColor.g, SpecularColor.b);
         m_materials[index].setSpecularColor(glm::vec3(SpecularColor.r, SpecularColor.g, SpecularColor.b));
     }
 }
@@ -605,6 +610,16 @@ void Mesh::extractTrianglesFromScene() {
     std::cout << "Num triangles: " << m_triangles.size() << std::endl;
 }
 
+float angle = 0;
+float factor = 0;
+
+glm::mat4 Mesh::computeTransform(const MeshData& mesh)
+{
+    // Ensure the data layout is compatible
+    glm::mat4 glmTransform = glm::transpose(glm::make_mat4(&mesh.Transform.a1));
+    return glmTransform;
+}
+
 void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection)
 {
     glUseProgram(shaderProgram);
@@ -617,27 +632,49 @@ void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& 
 
     glBindVertexArray(m_VAO);
 
+    // Map to store computed transformations
+    std::unordered_map<std::string, glm::mat4> meshTransforms;
+
     for (unsigned int meshIndex = 0; meshIndex < m_meshes.size(); meshIndex++) {
-        // Convert Assimp's aiMatrix4x4 to glm::mat4
-        aiMatrix4x4 aiTransform = m_meshes[meshIndex].Transform;
-        glm::mat4 transform = glm::transpose(glm::make_mat4(&aiTransform.a1));
+        MeshData& mesh = m_meshes[meshIndex];
+
+        // Compute the transformation for this mesh
+        glm::mat4 transform = computeTransform(mesh);
 
         // Set the model matrix
         GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(transform));
 
-        Material material = m_materials[m_meshes[meshIndex].MaterialIndex];
+        // Set the object color
+        Material material = m_materials[mesh.MaterialIndex];
         glm::vec3 objectColor = material.getDiffuseColor();
+
+        if (mesh.Name.find("Lamp") != std::string::npos) {
+            if (factor > 0.5)
+                objectColor = glm::vec3(1.0f, 0.10f, 0.10f);
+        }
+
         glUniform3fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, glm::value_ptr(objectColor));
 
         // Draw the mesh
         glDrawElementsBaseVertex(GL_TRIANGLES,
-                                 m_meshes[meshIndex].NumIndices,
+                                 mesh.NumIndices,
                                  GL_UNSIGNED_INT,
-                                 (void*)(sizeof(unsigned int) * m_meshes[meshIndex].BaseIndex),
-                                 m_meshes[meshIndex].BaseVertex);
+                                 (void*)(sizeof(unsigned int) * mesh.BaseIndex),
+                                 mesh.BaseVertex);
     }
 
     glBindVertexArray(0);
     glUseProgram(0);
+
+    angle += 0.5f; // Increment angle for animation
+    factor += 0.005f; // Increment factor for animation
+    if (factor > 1.0)
+        factor = 0.0f;
 }
+
+// if (mesh.Name.find("A1") != std::string::npos) {
+//     glm::vec3 rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f); // Example: Y-axis
+//     float angleInRadians = glm::radians(angle);
+//     localTransform = glm::rotate(localTransform, angleInRadians, rotationAxis);
+// }

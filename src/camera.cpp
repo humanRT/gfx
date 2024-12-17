@@ -2,7 +2,7 @@
 
 Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 up)
     : m_window(nullptr), m_position(position), m_target(target), m_up(up),
-      m_distance(glm::distance(position, target)), m_yaw(-90.0f), m_pitch(0.0f)
+      m_distance(glm::distance(position, target)), m_yaw(-135.0f), m_pitch(30.0f)
 {
     updateCameraVectors();
 }

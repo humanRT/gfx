@@ -377,7 +377,7 @@ void Gizmo::run()
     glm::vec3 lightTarget = glm::vec3(0.0f, 1.0f, 0.0f); // Target for the light
 
     while (!glfwWindowShouldClose(pWindow)) {
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         pCamera->update();

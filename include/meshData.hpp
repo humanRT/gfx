@@ -7,10 +7,13 @@
 
 #define INVALID_MATERIAL 0xFFFFFFFF
 
-struct MeshData {
+class MeshData
+{
+public:
     MeshData()
     {
-        Name = "empty";
+        Name = "";
+        Parent = nullptr;
         NumIndices = 0;
         BaseVertex = 0;
         BaseIndex = 0;
@@ -19,6 +22,7 @@ struct MeshData {
     }
 
     std::string Name;
+    MeshData* Parent;
     uint NumIndices;
     uint BaseVertex;
     uint BaseIndex;
@@ -32,13 +36,33 @@ struct MeshData {
         return oss.str();
     }
 
-    static MeshData findByName(const std::vector<MeshData>& meshes, const std::string& targetName)
+    static MeshData* findByName(std::vector<MeshData>& meshes, const std::string& targetName)
     {
+        // Check if targetName is not initialized
+        if (std::addressof(targetName) == nullptr) {
+            return nullptr;
+        }
+
         auto it = std::find_if(meshes.begin(), meshes.end(), [&targetName](const MeshData& mesh) {
             return mesh.Name == targetName;
         });
         
-        if (it != meshes.end()) { return *it; } 
-        else { return MeshData(); }
+        if (it != meshes.end()) { return &(*it); } 
+        else { return nullptr; }
+    }
+
+    static MeshData* findByName(std::vector<MeshData>& meshes, const aiString& targetName)
+    {
+        // Check if targetName is not initialized
+        if (std::addressof(targetName) == nullptr) {
+            return nullptr;
+        }
+
+        auto it = std::find_if(meshes.begin(), meshes.end(), [&targetName](const MeshData& mesh) {
+            return mesh.Name == targetName.C_Str();
+        });
+        
+        if (it != meshes.end()) { return &(*it); } 
+        else { return nullptr; }
     }
 };
