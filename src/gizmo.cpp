@@ -284,7 +284,7 @@ int Gizmo::init()
     m_wireframeProgram = createWireframeShaderProgram();
     m_lightProgram = createSimpleShaderProgram();
 
-    pCamera = new Camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    pCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.68f), glm::vec3(0.0f, 0.125f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     pCamera->setWindow(pWindow);
 
     glEnable(GL_MULTISAMPLE);
@@ -354,7 +354,9 @@ void Gizmo::cbKeyboard(GLFWwindow* window, int key, int /*scancode*/, int action
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
         else if (key == GLFW_KEY_SPACE) {
-            
+            std::string title = "Shutdown aborted";
+            std::cout << "\033[35m" << title << "\033[0m" << std::endl;
+            runIndifinitely = true;
         }        
     }
 }
@@ -380,12 +382,6 @@ void Gizmo::cbTimer(int interval)
     }
 }
 
-bool Gizmo::cbShutdownTimer()
-{
-    std::cout << "Shutdown triggered. Cleaning up resources...\n";
-    return false; 
-}
-
 void Gizmo::run(int runForSeconds)
 {
     float lightAngle = 0.0f; // Initial angle for light rotation
@@ -394,10 +390,7 @@ void Gizmo::run(int runForSeconds)
     glm::vec3 lightTarget = glm::vec3(0.0f, 1.0f, 0.0f); // Target for the light
 
     if (runForSeconds > 0) {
-        auto self = shared_from_this(); // Capture shared pointer to this instance
-        utils::timer::shutdown(runForSeconds, [self]() -> bool {
-            return self->cbShutdownTimer();
-        });
+        utils::timer::shutdown(runForSeconds, &runIndifinitely);
     }
 
     while (!glfwWindowShouldClose(pWindow)) {
@@ -446,6 +439,10 @@ void Gizmo::run(int runForSeconds)
         pMesh->render(m_shaderProgram, view, projection, toggle);
         // pMesh->drawTriangles(m_wireframeProgram, mvp);
         // drawLightLine(lightPos, lightTarget, mvp, m_lightProgram);
+
+        // Render the grid
+        auto matrices = Grid::GridMatrices(view, projection);
+        Grid::renderGrid(matrices, pCamera->getPosition());
 
         glfwSwapBuffers(pWindow);
         glfwPollEvents();

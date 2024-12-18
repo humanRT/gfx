@@ -103,6 +103,11 @@ void Mesh::processNode(aiNode* node, const aiScene* scene, int level)
     MeshData* meshData = MeshData::findByName(m_meshes, node->mName);
     MeshData* parentData = MeshData::findByName(m_meshes, node->mParent->mName);
 
+    if (meshData == nullptr) {
+        printf(RED_TEXT "Error: MeshData not found for node '%s'" RESET_TEXT "\n", node->mName.C_Str());
+        return;
+    }
+
     if (parentData) {
         parentData->Children.push_back(meshData);
         meshData->Parent = parentData;
@@ -637,21 +642,17 @@ glm::mat4 Mesh::computeTransform(const MeshData& mesh)
     }
 
     // Identity matrix
-    glm::mat4 parentTransform = glm::mat4(1.0f);
-    if (mesh.Parent != nullptr)
-    {
-        // parentTransform = glm::inverse(mesh.Parent->getTransform());
-        parentTransform = mesh.Parent->getTransform();
-    }
-
     glm::mat4 localTransform = mesh.getTransform();
-    if (mesh.Name.find("A1") != std::string::npos) {
+    if (mesh.containsInAncestry("A0"))
+    {
         glm::vec3 rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f); // Example: Y-axis
-        float angleInRadians = glm::radians(angle);
+        float angleInRadians = glm::radians(-angle);
         localTransform = glm::rotate(localTransform, angleInRadians, rotationAxis);
+        glm::mat4 parentTransform = glm::inverse(mesh.Parent->getTransform()) * computeTransform(*mesh.Parent);
+        localTransform = parentTransform * localTransform;
     }
         
-    return parentTransform * localTransform;
+    return localTransform;
 }
 
 void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection, bool toggle)

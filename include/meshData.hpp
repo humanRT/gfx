@@ -54,6 +54,18 @@ public:
         return glm::transpose(glm::make_mat4(&Transform.a1));
     }
 
+    bool containsInAncestry(const std::string& str) const
+    {
+        const MeshData* current = this;
+        while (current->Parent != nullptr) {
+            if (current->Parent->Name.find(str) != std::string::npos) {
+                return true;
+            }
+            current = current->Parent;
+        }
+        return false;
+    }
+
     static MeshData* findByName(std::vector<MeshData>& meshes, const std::string& targetName)
     {
         // Check if targetName is not initialized

@@ -28,6 +28,7 @@
 #include "assimp/postprocess.h"
 
 #include "camera.hpp"
+#include "grid.hpp"
 #include "mesh.hpp"
 #include "math3d.hpp"
 #include "utils.hpp"
@@ -53,7 +54,6 @@ public:
     void cbScroll(GLFWwindow* window, double xoffset, double yoffset);
     void cbSpecialKeyboard(int key, int mouse_x, int mouse_y);
     void cbTimer(int interval);
-    bool cbShutdownTimer();
     
 private:
     GLuint compileShader(GLenum type, const char* source);
@@ -71,6 +71,7 @@ private:
 
     bool tick = false;
     bool toggle = false;
+    bool runIndifinitely = false;
     glm::mat4 mvp, model, view, projection;
     GLuint m_shaderProgram;
     GLuint m_wireframeProgram;

@@ -24,6 +24,7 @@ namespace utils
     {
         float toRadians(float degrees);
     }
+    
     namespace disk
     {
         std::string getCurrentDirectory();
@@ -42,8 +43,7 @@ namespace utils
 
     namespace timer
     {
-        // void shutdown(int);
-        void shutdown(int seconds,  std::function<bool()> callback);
+        void shutdown(int seconds,  bool* runIndifiitely);
     }
 }
 

@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    int runForSeconds = 10;
+    int runForSeconds = 45;
 
     if (argc > 1)
     {

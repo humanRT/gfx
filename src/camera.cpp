@@ -2,8 +2,9 @@
 
 Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 up)
     : m_window(nullptr), m_position(position), m_target(target), m_up(up),
-      m_distance(glm::distance(position, target)), m_yaw(-135.0f), m_pitch(30.0f)
+      m_distance(glm::distance(position, target)), m_yaw(-90.0f), m_pitch(60.0f)
 {
+    std::cout << "Distance: " << m_distance << std::endl;
     updateCameraVectors();
 }
 
@@ -40,10 +41,10 @@ void Camera::setWindow(GLFWwindow* window)
 
 void Camera::resetView()
 {
-    m_distance = 1.0f;  // Default distance from target
+    m_distance = 0.65f;  // Default distance from target
     m_yaw = -90.0f;     // Default horizontal angle
-    m_pitch = 0.0f;     // Default vertical angle
-    m_target = glm::vec3(0.0f, 0.0f, 0.0f); // Default target
+    m_pitch = 60.0f;     // Default vertical angle
+    m_target = glm::vec3(0.0f, 0.125f, 0.0f); // Default target
     updateCameraVectors();
 }
 
