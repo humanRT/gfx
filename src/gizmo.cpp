@@ -115,6 +115,10 @@ Gizmo::Gizmo()
 
 Gizmo::~Gizmo()
 {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     delete pMesh;
     delete pCamera;
 }
@@ -287,6 +291,13 @@ int Gizmo::init()
     pCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.68f), glm::vec3(0.0f, 0.125f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     pCamera->setWindow(pWindow);
 
+    // Initialize ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui_ImplGlfw_InitForOpenGL(pWindow, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+    
     glEnable(GL_MULTISAMPLE);
     glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
     glEnable(GL_DEPTH_TEST);
@@ -341,9 +352,57 @@ void Gizmo::setCallbacks(GLFWwindow* window)
     });
 }
 
+void Gizmo::updateProjectionMatrix(int width, int height) {
+    if (height == 0) height = 1;
+    float aspectRatio = static_cast<float>(width) / height;
+    projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+}
+
+void Gizmo::updateLightning(const GLuint shaderProgram)
+{
+    static float lightAngle = 0.0f; // Initial angle for light rotation
+    static const float lightRadius = 5.0f; // Distance from the origin
+    static const float rotationSpeed = 0.075f; // Speed of rotation (radians per frame)
+
+    // Calculate light position
+        float lightX = lightRadius * cos(lightAngle);
+        float lightY = lightRadius * sin(lightAngle);
+        glm::vec3 lightPos = glm::vec3(lightX, 1.0f, lightY); // Z-axis rotation
+
+        // Update light angle
+        if (tick)
+        {
+            lightAngle += rotationSpeed;
+            tick = false;
+        }
+
+        if (lightAngle > 2.0f * glm::pi<float>()) {
+            lightAngle -= 2.0f * glm::pi<float>();
+        }
+
+        glUseProgram(shaderProgram);
+        GLuint colorLoc = glGetUniformLocation(shaderProgram, "wireframeColor");
+        glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // Set to red
+
+        // Set light properties
+        glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 0.9f);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "lightColor"), 1, glm::value_ptr(lightColor));
+        glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, glm::value_ptr(lightPos)); // Fixed
+
+        // Set viewer position
+        glm::vec3 viewPos = pCamera->getPosition();
+        glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(viewPos));
+
+        // Set attenuation factors
+        glUniform1f(glGetUniformLocation(shaderProgram, "constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "quadratic"), 0.032f);
+}
+
 void Gizmo::cbFramebufferSize(GLFWwindow* /*window*/, int width, int height)
 {
     glViewport(0, 0, width, height);
+    updateProjectionMatrix(width, height);
 }
 
 void Gizmo::cbKeyboard(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
@@ -382,13 +441,53 @@ void Gizmo::cbTimer(int interval)
     }
 }
 
+void Gizmo::handleSnapToBorders(GLFWwindow* pWindow) {
+    int width, height;
+    glfwGetFramebufferSize(pWindow, &width, &height);
+
+    // Threshold distance for snapping
+    const float snapThreshold = 50.0f;
+
+    // Get the current position of the ImGui window
+    ImVec2 windowPos = ImGui::GetWindowPos();
+    ImVec2 windowSize = ImGui::GetWindowSize();
+
+    // Snap to left border
+    if (windowPos.x <= snapThreshold) {
+        ImGui::SetWindowPos(ImVec2(0, windowPos.y));
+    }
+
+    // Snap to right border
+    if (windowPos.x + windowSize.x >= width - snapThreshold) {
+        ImGui::SetWindowPos(ImVec2(width - windowSize.x, windowPos.y));
+    }
+
+    // Snap to top border
+    if (windowPos.y <= snapThreshold) {
+        ImGui::SetWindowPos(ImVec2(windowPos.x, 0));
+    }
+
+    // Snap to bottom border
+    if (windowPos.y + windowSize.y >= height - snapThreshold) {
+        ImGui::SetWindowPos(ImVec2(windowPos.x, height - windowSize.y));
+    }
+}
+
+void Gizmo::gui(GLFWwindow* window)
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // Create ImGui Panel
+    ImGui::Begin("Draggable Window");
+    handleSnapToBorders(window);
+    ImGui::Text("Hello from the side panel!");  // Add a label
+    ImGui::End();
+}
+
 void Gizmo::run(int runForSeconds)
 {
-    float lightAngle = 0.0f; // Initial angle for light rotation
-    const float lightRadius = 5.0f; // Distance from the origin
-    const float rotationSpeed = 0.075f; // Speed of rotation (radians per frame)
-    glm::vec3 lightTarget = glm::vec3(0.0f, 1.0f, 0.0f); // Target for the light
-
     if (runForSeconds > 0) {
         utils::timer::shutdown(runForSeconds, &runIndifinitely);
     }
@@ -399,52 +498,27 @@ void Gizmo::run(int runForSeconds)
 
         pCamera->update();
         view = pCamera->getViewMatrix();
-        projection = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f);
+        
+        int width, height;
+        glfwGetFramebufferSize(pWindow, &width, &height);
+        updateProjectionMatrix(width, height);
+        updateLightning(m_shaderProgram);
 
-        // Calculate light position
-        float lightX = lightRadius * cos(lightAngle);
-        float lightY = lightRadius * sin(lightAngle);
-        glm::vec3 lightPos = glm::vec3(lightX, 1.0f, lightY); // Z-axis rotation
 
-        // Update light angle
-        if (tick)
-        {
-            lightAngle += rotationSpeed;
-            tick = false;
-        }
-
-        if (lightAngle > 2.0f * glm::pi<float>()) {
-            lightAngle -= 2.0f * glm::pi<float>();
-        }
-
-        glUseProgram(m_shaderProgram);
-        GLuint colorLoc = glGetUniformLocation(m_shaderProgram, "wireframeColor");
-        glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // Set to red
-
-        // Set light properties
-        glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 0.9f);
-        glUniform3fv(glGetUniformLocation(m_shaderProgram, "lightColor"), 1, glm::value_ptr(lightColor));
-        glUniform3fv(glGetUniformLocation(m_shaderProgram, "lightPos"), 1, glm::value_ptr(lightPos)); // Fixed
-
-        // Set viewer position
-        glm::vec3 viewPos = pCamera->getPosition();
-        glUniform3fv(glGetUniformLocation(m_shaderProgram, "viewPos"), 1, glm::value_ptr(viewPos));
-
-        // Set attenuation factors
-        glUniform1f(glGetUniformLocation(m_shaderProgram, "constant"), 1.0f);
-        glUniform1f(glGetUniformLocation(m_shaderProgram, "linear"), 0.09f);
-        glUniform1f(glGetUniformLocation(m_shaderProgram, "quadratic"), 0.032f);
-
-        // Render the mesh
+        gui(pWindow);
         pMesh->render(m_shaderProgram, view, projection, toggle);
-        // pMesh->drawTriangles(m_wireframeProgram, mvp);
-        // drawLightLine(lightPos, lightTarget, mvp, m_lightProgram);
-
-        // Render the grid
         auto matrices = Grid::GridMatrices(view, projection);
         Grid::renderGrid(matrices, pCamera->getPosition());
 
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(pWindow);
         glfwPollEvents();
     }
 }
+
+
+        // pMesh->drawTriangles(m_wireframeProgram, mvp);
+        // drawLightLine(lightPos, lightTarget, mvp, m_lightProgram);
+

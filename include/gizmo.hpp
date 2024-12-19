@@ -27,6 +27,10 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "camera.hpp"
 #include "grid.hpp"
 #include "mesh.hpp"
@@ -41,11 +45,13 @@ public:
     Gizmo();
     ~Gizmo();
 
+    void gui(GLFWwindow* window);
     int init();
     bool loadModel(const std::string& filePath);
     void setCallbacks(GLFWwindow* window);
     void run(int runForSeconds);
 
+private:
     void cbError();
     void cbFramebufferSize(GLFWwindow* window, int width, int height);
     void cbKeyboard(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -54,13 +60,15 @@ public:
     void cbScroll(GLFWwindow* window, double xoffset, double yoffset);
     void cbSpecialKeyboard(int key, int mouse_x, int mouse_y);
     void cbTimer(int interval);
-    
-private:
+
     GLuint compileShader(GLenum type, const char* source);
     GLuint createShaderProgram();
     GLuint createWireframeShaderProgram();
     GLuint createSimpleShaderProgram();
     void drawLightLine(const glm::vec3& lightPos, const glm::vec3& lightTarget, const glm::mat4& mvp, GLuint shaderProgram);
+    void handleSnapToBorders(GLFWwindow* pWindow);
+    void updateProjectionMatrix(int width, int height);
+    void updateLightning(const GLuint shaderProgram);
 
 private:
     static const char* vertexShaderSource;
@@ -77,10 +85,8 @@ private:
     GLuint m_wireframeProgram;
     GLuint m_lightProgram;
     GLFWwindow *pWindow;
-    GLuint MVPLocation;
     Mesh *pMesh = NULL;
     Camera *pCamera = NULL;
-    PersProjInfo persProjInfo;
 };
 
 #endif // GIZMO_HPP

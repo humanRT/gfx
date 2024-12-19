@@ -702,5 +702,5 @@ void Mesh::render(GLuint shaderProgram, const glm::mat4& view, const glm::mat4& 
     glBindVertexArray(0);
     glUseProgram(0);
 
-    angle += 0.5f; // Increment angle for animation
+    angle += 0.05f; // Increment angle for animation
 }
